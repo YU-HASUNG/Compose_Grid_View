@@ -1,43 +1,56 @@
 package com.example.myapplication
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ripple.rememberRipple
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role.Companion.Image
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
 import com.example.myapplication.model.TestDataModel
 import com.example.myapplication.ui.theme.MyApplicationTheme
+import com.example.myapplication.viewmodel.TestViewModel
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 class MainActivity : ComponentActivity() {
+
+    private val viewModel: TestViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         actionBar?.hide()
 
         setContent {
-            ListControllerView()
+            ListControllerView(
+                viewModel
+            )
         }
     }
 }
@@ -57,15 +70,127 @@ fun DefaultPreview() {
 
 @Composable
 private fun ListControllerView(
-
+    viewModel: TestViewModel
 ){
 
+    val context = LocalContext.current
+    val state = viewModel.state
+    
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = false)
+
+    Surface(
+        modifier = Modifier
+            .fillMaxSize(),
+        color = Color.White
+    ) {
+
+        Box(modifier = Modifier
+            .fillMaxSize()
+        ){
+
+            SwipeRefresh(
+                state = swipeRefreshState,
+                onRefresh = {
+                    viewModel.fetchData(0, 20)
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                ) {
+
+                ListView(
+                    list = viewModel.list,
+                    onLoadMore = {
+
+                        viewModel.fetchData(viewModel.list.size, 15)
+                    }, onItemClick = {
+                        Toast.makeText(context, "Index${it.index} item has clicked", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+
+            if (state.loading.value) {
+
+                Box(modifier = Modifier
+                    .fillMaxSize()
+                    .clickable { },
+                contentAlignment = Alignment.Center
+                ){
+
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .wrapContentSize()
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.Black.copy(alpha = 0.3f))
+                            .padding(20.dp)
+                    ){
+
+                        CircularProgressIndicator(color = Color.White)
+
+                    }
+                }
+
+            }
+        }
+    }
+    
+    LaunchedEffect(key1 = null, block = {
+        viewModel.fetchData(0, 10)
+    })
 }
 
 @Composable
 private fun ListView(
     list: MutableList<TestDataModel>,
+    onLoadMore: () -> Unit,
+    onItemClick: (TestDataModel) -> Unit
 ){
+
+    LazyVerticalGrid(
+        columns = object: GridCells {
+            override fun Density.calculateCrossAxisCellSizes(
+                availableSize: Int,
+                spacing: Int
+            ): List<Int> {
+                val firstColumn = (availableSize - spacing) * 2 / 3
+                val secondColumn = (availableSize - spacing) - firstColumn
+
+                return listOf(firstColumn, secondColumn)
+            }
+
+        }, contentPadding = PaddingValues(
+            horizontal = 2.dp,
+            vertical = 4.dp
+        ),
+        state = rememberLazyGridState(),
+        modifier = Modifier.fillMaxSize()
+    ){
+
+        itemsIndexed(
+            items = list,
+            key = { _: Int, item: TestDataModel ->
+                item.hashCode()
+            },
+            span = { _: Int, item: TestDataModel ->
+                GridItemSpan(1)
+
+            }
+        ){ index, item ->
+
+            ListViewItemView(
+                model = item,
+                onItemClick = onItemClick
+            )
+
+            if(index == list.size - 1) {
+                
+                LaunchedEffect(key1 = list.size, block = {
+                    onLoadMore()
+                })
+            }
+        }
+
+    }
 
 }
 

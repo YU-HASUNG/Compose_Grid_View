@@ -16,7 +16,7 @@ object MockServer {
 
             TestDataModel(
                 index = i,
-                imageResource = R.mipmap.ic_launcher,
+                imageResource = R.drawable.nhd,
                 content = "grid item"
             ).apply{
                 list.add(this)

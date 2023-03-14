@@ -10,7 +10,7 @@ import kotlinx.coroutines.*
 
 class TestViewModelState {
 
-    private val loading = mutableStateOf(false)
+    val loading = mutableStateOf(false)
     fun toggleLoading(isLoading: Boolean){
         loading.value = isLoading
     }
@@ -18,8 +18,8 @@ class TestViewModelState {
 
 class TestViewModel: ViewModel() {
 
-    private val state = TestViewModelState()
-    private val list = mutableStateListOf<TestDataModel>()
+    val state = TestViewModelState()
+    val list = mutableStateListOf<TestDataModel>()
 
     fun fetchData(offset: Int, limit: Int) = viewModelScope.launch {
 
@@ -35,6 +35,11 @@ class TestViewModel: ViewModel() {
 
                 val tempList = fetch.await()
                 state.toggleLoading(false)
+
+                if(offset == 0){
+                    list.clear()
+                }
+
                 list.addAll(tempList)
             }
 
